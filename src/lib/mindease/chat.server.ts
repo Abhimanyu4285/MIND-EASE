@@ -128,12 +128,15 @@ export async function handleChat(request: Request): Promise<Response> {
       controller.enqueue(enc.encode(first));
     },
     async pull(controller) {
+      // Keep reading until there is text to send (non-text parts must not stall the stream).
       try {
-        const n = await iter.next();
-        if (n.done) return controller.close();
-        const part = n.value;
-        if (part.type === "text-delta" && part.text) controller.enqueue(enc.encode(part.text));
-        else if (part.type === "error") controller.error(part.error);
+        for (;;) {
+          const n = await iter.next();
+          if (n.done) return controller.close();
+          const part = n.value;
+          if (part.type === "text-delta" && part.text) return controller.enqueue(enc.encode(part.text));
+          if (part.type === "error") return controller.error(part.error);
+        }
       } catch (err) {
         controller.error(err);
       }
