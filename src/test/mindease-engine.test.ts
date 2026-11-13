@@ -19,7 +19,7 @@ describe("MindEase safety and routing rules", () => {
     expect(route("I miss home")).toBe("talk");
   });
   it("finds the sleep guide for sleep questions", () => {
-    expect(retrieve("cannot sleep before exams", 1)[0].title).toBe("Sleep for Students");
+    expect(retrieve("insomnia at night", 1)[0].title).toBe("Sleep for Students");
   });
   it("only suggests activities matching the chosen mood", () => {
     for (const a of suggest("lonely", 4)) expect(a.moods).toContain("lonely");
