@@ -1,0 +1,54 @@
+{
+  "source": "code-archive: MindEase-Windows-Android-Source.zip (single-page web app + Electron/Android wrappers)",
+  "capabilities": [
+    {
+      "capability": "code: chat UI, offline companion engine, crisis detection, activities, resource search (BM25), suggestions, commands",
+      "source": "shared/www/index.html",
+      "outcome": "migrate to React/TanStack",
+      "status": "verified",
+      "next_action": "none"
+    },
+    {
+      "capability": "browser-local memory notes and theme (localStorage)",
+      "source": "index.html",
+      "outcome": "migrate as-is (privacy by design, no server storage)",
+      "status": "verified",
+      "next_action": "none"
+    },
+    {
+      "capability": "voice dictation + read aloud",
+      "source": "claude-shim.js",
+      "outcome": "migrate (browser speech APIs)",
+      "status": "verified",
+      "next_action": "none"
+    },
+    {
+      "capability": "AI backend /api/chat (was Netlify + Anthropic key)",
+      "source": "claude-shim.js / README",
+      "outcome": "replace with Lovable AI at same /api/chat contract (user chose built-in AI); verified chat reply, suggestions JSON and memory-note extraction live",
+      "status": "verified",
+      "next_action": "none"
+    },
+    {
+      "capability": "PWA manifest + icons",
+      "source": "manifest.webmanifest, icons/",
+      "outcome": "migrate; service worker dropped (breaks preview)",
+      "status": "verified",
+      "next_action": "none"
+    },
+    {
+      "capability": "database, users, auth, records",
+      "source": "none detected",
+      "outcome": "not applicable",
+      "status": "verified",
+      "next_action": "none"
+    },
+    {
+      "capability": "Windows (Electron) and Android wrappers",
+      "source": "windows/, android/",
+      "outcome": "cannot be built in Lovable; wrappers can point at the published URL",
+      "status": "accepted",
+      "next_action": "user builds natively if desired"
+    }
+  ]
+}
