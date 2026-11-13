@@ -28,3 +28,10 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Project rules
+
+- MindEase is a single-page app at `/`; offline companion logic lives in `src/lib/mindease/engine.ts` as pure functions with tests in `src/test/` — keep UI and logic separated so safety rules stay testable.
+- `POST /api/chat` keeps the original wrapper contract (`{prompt}` or `{messages}`, `tier`, plain-text stream) so the Windows/Android wrappers can point at the hosted app; errors return JSON `{error}` with the upstream status.
+- Memory notes and theme are stored only in browser localStorage by design (privacy promise in the UI); do not move them server-side without asking.
+- No service worker: it breaks the editor preview; the web manifest alone provides install metadata.
