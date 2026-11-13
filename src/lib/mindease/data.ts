@@ -13,7 +13,8 @@ export const CRISIS = [/\bkill (myself|my self)\b/i, /\bsuicid(e|al)\b/i, /\bend
 export const ELEVATED = [/\bhopeless\b/i, /\bworthless\b/i, /\bcan'?t (go on|do this anymore|take (it|this) anymore)\b/i,
   /\bno one (cares|would notice)\b/i, /\bnothing matters\b/i, /\bi('| a)m a burden\b/i, /\bgive up on (everything|life)\b/i, /\bpanic attack\b/i];
 
-export const ACTIVITIES = [
+export type Activity = { id: string; type: string; title: string; minutes: number; moods: string[]; steps: string[] };
+export const ACTIVITIES: Activity[] = [
   { id: "box", type: "breathing", title: "Box breathing", minutes: 2, moods: ["anxious","stressed","overwhelmed","panic"],
     steps: ["Sit comfortably and relax your shoulders.","Breathe in through your nose for 4 seconds.","Hold gently for 4 seconds.","Breathe out slowly for 4 seconds.","Hold for 4 seconds. Repeat 4 to 6 rounds."] },
   { id: "senses", type: "grounding", title: "5-4-3-2-1 grounding", minutes: 3, moods: ["anxious","overwhelmed","panic","stressed"],
@@ -34,7 +35,7 @@ export const ACTIVITIES = [
     steps: ["Imagine a lighthouse on a quiet coast at dusk. You are the keeper, and there is no rush tonight.","A small boat drifts in the fog. Do you light the lamp, or call out softly?","Type your choice in the chat and keep the story going in your own words."] }
 ];
 
-export const MOODS = {
+export const MOODS: Record<string, string[]> = {
   anxious: ["anxious","anxiety","nervous","worried","worry","scared"], panic: ["panic","can't breathe"],
   stressed: ["stress","pressure","deadline","exam"], overwhelmed: ["overwhelm","too much","drowning"],
   tired: ["tired","exhausted","drained","burnt","burned out","burnout"],
@@ -42,7 +43,7 @@ export const MOODS = {
   sad: ["sad","down","low","cry","empty"], lonely: ["lonely","alone","isolated","no friends","homesick"], stuck: ["stuck","lost","directionless"]
 };
 
-export const RESOURCES = [
+export const RESOURCES: { title: string; tags: string; sections: [string, string][] }[] = [
  { title: "Managing Exam and Academic Stress", tags: "exams stress academic pressure study deadlines", sections: [
   ["Why exam stress feels so loud","Exam stress is your body treating a deadline like a threat. A racing heart, a blank mind and trouble sleeping are common stress responses, not signs that you are failing. Naming it as stress rather than proof you are not good enough takes some of its power away."],
   ["Shrinking an overwhelming syllabus","When the syllabus feels like a wall, stop looking at the whole wall. List the topics, mark each as strong, shaky or untouched, and start with one shaky topic for just 25 minutes. Take a 5 minute break, then repeat. Progress on small pieces lowers panic more than planning the perfect schedule."],
@@ -79,7 +80,7 @@ export const RESOURCES = [
 
 /* ============ RAG (BM25) ============ */
 
-export const REFLECT = {
+export const REFLECT: Record<string, string[]> = {
   stressed: ["That sounds like a lot of pressure to carry.","It makes sense you are feeling stretched thin."],
   anxious: ["That sounds really unsettling to sit with.","Feeling on edge like that is exhausting."],
   overwhelmed: ["When everything piles up at once, it is hard to even know where to start.","That sounds like a heavy amount to be holding."],
@@ -90,7 +91,7 @@ export const REFLECT = {
   stuck: ["Feeling stuck is uncomfortable, especially when you want things to move.","That in-between feeling can be really draining."],
   none: ["Thanks for sharing that with me.","I hear you.","That makes sense."]
 };
-export const FOLLOW = {
+export const FOLLOW: Record<string, string[]> = {
   stressed: ["What part of it is weighing on you the most right now?","When did it start to feel this heavy?","If you could take one thing off your plate this week, what would it be?"],
   anxious: ["Where do you notice it most: your thoughts, or in your body?","What is the worry that keeps coming back?"],
   overwhelmed: ["If we only looked at one piece of it, which piece would matter most?","What does 'too much' look like for you today?"],
