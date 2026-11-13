@@ -31,13 +31,13 @@ type Msg = {
   html: string;
   text: string;
   streaming?: boolean;
-  acts?: Activity[];
-  sources?: string[];
-  helpline?: string;
-  suggestions?: Suggestion[];
-  seeSomeone?: string;
-  footnote?: string;
-  notice?: string;
+  acts?: Activity[] | undefined;
+  sources?: string[] | undefined;
+  helpline?: string | undefined;
+  suggestions?: Suggestion[] | undefined;
+  seeSomeone?: string | undefined;
+  footnote?: string | undefined;
+  notice?: string | undefined;
 };
 type Turn = { role: "user" | "assistant"; content: string };
 
@@ -356,7 +356,8 @@ export function MindEaseApp() {
     setBusy(true);
     const id = addMsg({ role: "assistant", html: THINKING("Thinking about what you have shared"), text: "", streaming: true });
     const mems = memRef.current.consent ? memRef.current.notes.slice(0, 6).map((n) => n.text) : [];
-    let data: { intro?: string; suggestions: Suggestion[]; seeSomeone?: string | null } | null = null;
+    type SuggestData = { intro?: string; suggestions: Suggestion[]; seeSomeone?: string | null };
+    let data = null as SuggestData | null;
     let notice: string | undefined;
 
     try {
@@ -380,7 +381,7 @@ Rules:
 Reply with only JSON in this shape:
 {"intro": "one warm sentence", "suggestions": [{"title": "...", "kind": "...", "why": "...", "steps": ["..."], "minutes": 5}], "seeSomeone": null}`;
         try {
-          const d = (await sampleJSON(prompt, { modelTier: "default" })) as typeof data;
+          const d = (await sampleJSON(prompt, { modelTier: "default" })) as SuggestData | null;
           if (d && Array.isArray(d.suggestions) && d.suggestions.length) data = d;
         } catch (err) {
           notice = handleAiError(err as AiError);

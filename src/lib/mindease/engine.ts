@@ -27,9 +27,11 @@ export function retrieve(q: string, k = 3): Chunk[] {
     c.toks.forEach((w) => (tf[w] = (tf[w] || 0) + 1));
     let s = 0;
     qt.forEach((w) => {
-      if (!tf[w]) return;
-      const idf = Math.log(1 + (n - DF[w] + 0.5) / (DF[w] + 0.5));
-      s += (idf * (tf[w] * 2.5)) / (tf[w] + 1.5 * (0.25 + (0.75 * c.toks.length) / AVG));
+      const f = tf[w];
+      if (!f) return;
+      const df = DF[w] ?? 0;
+      const idf = Math.log(1 + (n - df + 0.5) / (df + 0.5));
+      s += (idf * (f * 2.5)) / (f + 1.5 * (0.25 + (0.75 * c.toks.length) / AVG));
     });
     if (s > 0) out.push([s, c]);
   });
@@ -52,7 +54,7 @@ export const route = (t: string): Intent => (ACT_RE.test(t) ? "activity" : RES_R
 
 export function detectMood(t: string): string | null {
   t = t.toLowerCase();
-  for (const m in MOODS) if (MOODS[m].some((k) => t.includes(k))) return m;
+  for (const m in MOODS) if ((MOODS[m] ?? []).some((k) => t.includes(k))) return m;
   return null;
 }
 
@@ -64,12 +66,14 @@ export function suggest(mood: string | null, n: number, rand: () => number = Mat
   }
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
+    const tmp = pool[i]!;
+    pool[i] = pool[j]!;
+    pool[j] = tmp;
   }
   return pool.slice(0, n);
 }
 
-const pick = (a: string[], s: number) => a[s % a.length];
+const pick = (a: string[] | undefined, s: number) => (a && a.length ? (a[s % a.length] ?? "") : "");
 
 export function craftReply(ctx: { intent: Intent; mood: string | null; acts: Activity[]; rag: Chunk[]; turn: number; recalled: string | null }) {
   const { intent, mood, acts, rag, turn, recalled } = ctx;
@@ -79,10 +83,11 @@ export function craftReply(ctx: { intent: Intent; mood: string | null; acts: Act
       acts.map((a) => `- **${a.title}** (about ${a.minutes} min)`).join("\n") +
       "\n\nWant to try one together, or would you rather keep talking?"
     );
-  if (intent === "resource" && rag.length) {
-    let b = rag[0].text;
+  const top = rag[0];
+  if (intent === "resource" && top) {
+    let b = top.text;
     if (b.length > 420) b = b.slice(0, 420).replace(/\s+\S*$/, "") + "...";
-    return `Here is something that might help, from *${rag[0].title}*:\n\n${b}\n\nDoes that fit your situation, or should we look at it differently?`;
+    return `Here is something that might help, from *${top.title}*:\n\n${b}\n\nDoes that fit your situation, or should we look at it differently?`;
   }
   const m = mood || "none";
   let r = pick(REFLECT[m], turn);
@@ -134,7 +139,7 @@ export function extractNotes(notes: Note[], text: string): Note[] {
     const m = text.match(rx);
     if (!m) return;
     let n = m[0].replace(/\s+/g, " ").trim().slice(0, 140);
-    n = n[0].toUpperCase() + n.slice(1);
+    n = n.charAt(0).toUpperCase() + n.slice(1);
     out = addNote(out, n);
   });
   return out.slice(0, 50);
@@ -163,7 +168,7 @@ export function parseCommand(t: string): Command | null {
   let m: RegExpMatchArray | null;
   if (/^(start a )?(new chat|start over|clear (the )?chat)$/.test(s)) return { kind: "reset" };
   if ((m = s.match(/^(?:open|show|go to)(?: me)?(?: the)? (memory|activities|resources|support|get support|theme|tools)$/))) {
-    const w = m[1];
+    const w = m[1] ?? "";
     return { kind: "open", tab: w === "get support" ? "support" : w === "tools" ? null : (w as TabKey), label: w === "tools" ? "the tools" : w };
   }
   if ((m = s.match(/^(?:turn|switch) (on|off) (?:my )?memory$/))) return { kind: "memory", on: m[1] === "on" };
@@ -212,7 +217,7 @@ export function parseJSONLoose(t: string): unknown {
   const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fence) {
     try {
-      return JSON.parse(fence[1]);
+      return JSON.parse(fence[1] ?? "");
     } catch {
       /* fall through */
     }

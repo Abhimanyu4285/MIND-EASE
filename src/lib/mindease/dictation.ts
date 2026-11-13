@@ -7,7 +7,7 @@ export type Dictation = {
   active(): boolean;
   onPartial(h: Handler<{ text: string }>): () => void;
   onFinal(h: Handler<{ text: string }>): () => void;
-  onState(h: Handler<{ state: DictState; reason?: string }>): () => void;
+  onState(h: Handler<{ state: DictState; reason?: string | undefined }>): () => void;
 };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -20,7 +20,7 @@ export function makeDictation(): Dictation | null {
   let stopReason: string | null = null;
   const P: Handler<{ text: string }>[] = [];
   const F: Handler<{ text: string }>[] = [];
-  const S: Handler<{ state: DictState; reason?: string }>[] = [];
+  const S: Handler<{ state: DictState; reason?: string | undefined }>[] = [];
   const setState = (s: DictState, r?: string) => {
     state = s;
     S.forEach((h) => h({ state: s, reason: r }));

@@ -191,7 +191,7 @@ export function SidePanel({ tab, setTab, mem, setMem, onErase, theme, setTheme, 
             <h4>Background</h4>
             {seg(
               "bg",
-              Object.keys(BGS).map((k) => [k, BGS[k].name] as [string, string]),
+              Object.keys(BGS).map((k) => [k, BGS[k]?.name ?? k] as [string, string]),
             )}
             <h4>Text size</h4>
             {seg("size", [
@@ -203,7 +203,7 @@ export function SidePanel({ tab, setTab, mem, setMem, onErase, theme, setTheme, 
             <h4>Font</h4>
             {seg(
               "font",
-              Object.keys(FONTS).map((k) => [k, FONTS[k][0]] as [string, string]),
+              Object.keys(FONTS).map((k) => [k, FONTS[k]?.[0] ?? k] as [string, string]),
             )}
             <h4>Corners</h4>
             {seg("round", [

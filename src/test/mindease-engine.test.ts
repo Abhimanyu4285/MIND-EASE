@@ -19,7 +19,7 @@ describe("MindEase safety and routing rules", () => {
     expect(route("I miss home")).toBe("talk");
   });
   it("finds the sleep guide for sleep questions", () => {
-    expect(retrieve("insomnia at night", 1)[0].title).toBe("Sleep for Students");
+    expect(retrieve("insomnia at night", 1)[0]?.title).toBe("Sleep for Students");
   });
   it("only suggests activities matching the chosen mood", () => {
     for (const a of suggest("lonely", 4)) expect(a.moods).toContain("lonely");
@@ -40,6 +40,6 @@ describe("MindEase memory is opt-in", () => {
   });
   it("extracts exam notes from what the student says", () => {
     const notes = extractNotes([], "I have an exam on Monday and I'm scared.");
-    expect(notes[0].text).toBe("I have an exam on Monday and I'm scared");
+    expect(notes[0]?.text).toBe("I have an exam on Monday and I'm scared");
   });
 });

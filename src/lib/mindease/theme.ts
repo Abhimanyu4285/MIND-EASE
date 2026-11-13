@@ -32,13 +32,14 @@ const h2r = (h: string): RGB => {
   h = String(h).replace("#", "");
   return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) || 0);
 };
+const ch = (a: RGB, i: number) => a[i] ?? 0;
 const r2h = (a: RGB) => "#" + a.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
 const lum = (a: RGB) => {
   const f = (v: number) => {
     v /= 255;
     return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
   };
-  return 0.2126 * f(a[0]) + 0.7152 * f(a[1]) + 0.0722 * f(a[2]);
+  return 0.2126 * f(ch(a, 0)) + 0.7152 * f(ch(a, 1)) + 0.0722 * f(ch(a, 2));
 };
 export const contrast = (a: RGB, b: RGB) => {
   const x = lum(a);
@@ -47,7 +48,7 @@ export const contrast = (a: RGB, b: RGB) => {
 };
 function toward(rgb: RGB, target: RGB, bg: RGB, min: number) {
   let c = rgb.slice();
-  for (let i = 0; i < 24 && contrast(c, bg) < min; i++) c = c.map((v, k) => v + (target[k] - v) * 0.12);
+  for (let i = 0; i < 24 && contrast(c, bg) < min; i++) c = c.map((v, k) => v + (ch(target, k) - v) * 0.12);
   return c;
 }
 /** Accent colours are nudged until they reach 4.5:1 contrast against the page. */
@@ -84,12 +85,17 @@ function applyVars(T: Theme) {
   const root = document.documentElement;
   const st = root.style;
   const dark = isDark();
-  const b = BGS[T.bg] || BGS.sage;
-  ["--bg", "--surface", "--surface-2", "--line"].forEach((n, i) => (b.l && b.d ? st.setProperty(n, (dark ? b.d : b.l)[i]) : st.removeProperty(n)));
+  const b = BGS[T.bg] ?? BGS["sage"]!;
+  const pal = b.l && b.d ? (dark ? b.d : b.l) : null;
+  ["--bg", "--surface", "--surface-2", "--line"].forEach((n, i) => {
+    const v = pal?.[i];
+    if (v) st.setProperty(n, v);
+    else st.removeProperty(n);
+  });
   const accNames = ["--accent", "--accent-fg", "--user", "--user-fg"];
   if (String(T.accent).toLowerCase() === DEF_T.accent) accNames.forEach((n) => st.removeProperty(n));
   else {
-    const bgHex = b.l && b.d ? (dark ? b.d : b.l)[0] : dark ? "#101715" : "#f2f6f4";
+    const bgHex = (b.l && b.d ? (dark ? b.d : b.l)[0] : undefined) ?? (dark ? "#101715" : "#f2f6f4");
     const acc = readableAccent(T.accent, bgHex, dark);
     const user = readableAccent(T.accent, "#ffffff", false);
     st.setProperty("--accent", acc);
@@ -97,8 +103,8 @@ function applyVars(T: Theme) {
     st.setProperty("--user", user);
     st.setProperty("--user-fg", "#ffffff");
   }
-  st.setProperty("--font-body", (FONTS[T.font] || FONTS.inter)[1]);
-  const r = ROUND[T.round] || ROUND.soft;
+  st.setProperty("--font-body", (FONTS[T.font] ?? FONTS["inter"]!)[1]);
+  const r = ROUND[T.round] ?? ROUND["soft"]!;
   st.setProperty("--r-bubble", r[0] + "px");
   st.setProperty("--r-ctl", r[1] + "px");
   st.setProperty("--r-card", r[2] + "px");

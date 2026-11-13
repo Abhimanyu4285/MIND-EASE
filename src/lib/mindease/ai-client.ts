@@ -1,7 +1,7 @@
 /* Browser side of the AI: streams text from /api/chat (the key stays on the server). */
 import { parseJSONLoose } from "./engine";
 
-export type AiError = { code: string; message: string; text?: string };
+export type AiError = { code: string; message: string; text?: string | undefined };
 export type AiInput = string | { role: "user" | "assistant"; content: string }[];
 
 export async function sample(
@@ -15,7 +15,7 @@ export async function sample(
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ ...body, tier: opts.modelTier || "quick" }),
-      signal: opts.signal,
+      ...(opts.signal ? { signal: opts.signal } : {}),
     });
   } catch (e) {
     throw { code: (e as Error)?.name === "AbortError" ? "cancelled" : "upstream_error", message: "Could not reach the AI service." } satisfies AiError;
