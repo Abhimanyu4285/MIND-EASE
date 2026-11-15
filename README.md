@@ -1,4 +1,4 @@
-MindEase: Agentic AI Companion for Emotional Wellbeing
+#MindEase: Agentic AI Companion for Emotional Wellbeing
 Problem Statement
 
 Many students feel stress, anxiety, loneliness or low mood but have no immediate, judgement-free way to deal with it. Counsellors are often hard to reach, and stigma stops people from asking for help. Nobody notices when a bad phase turns serious. Most existing apps are passive chatbots that give the same advice to everyone and never learn what works for the individual.
