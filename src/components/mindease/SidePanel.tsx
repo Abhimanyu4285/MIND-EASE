@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 
 import { ACTIVITIES } from "@/lib/mindease/data";
 import { retrieve, suggest, type Chunk, type Memory, type TabKey } from "@/lib/mindease/engine";
+import type { MoodStore } from "@/lib/mindease/checkins";
 import { ACCENTS, BGS, DEF_T, FONTS, type Theme } from "@/lib/mindease/theme";
+import { MoodPanel } from "./MoodPanel";
 import { ActivityCard, Helplines } from "./parts";
 
-const TABS: Record<TabKey, string> = { memory: "Memory", activities: "Activities", resources: "Resources", support: "Support", theme: "Theme" };
+const TABS: Record<TabKey, string> = { memory: "Memory", mood: "Mood", activities: "Activities", resources: "Resources", support: "Support", theme: "Theme" };
 const MOOD_CHIPS = ["anxious", "stressed", "overwhelmed", "tired", "unmotivated", "sad", "lonely"];
 
 type Props = {
@@ -13,6 +15,8 @@ type Props = {
   setTab: (t: TabKey) => void;
   mem: Memory;
   setMem: (fn: (m: Memory) => Memory) => void;
+  moodData: MoodStore;
+  setMoodData: (fn: (d: MoodStore) => MoodStore) => void;
   onErase: () => void;
   theme: Theme;
   setTheme: (t: Theme) => void;
@@ -20,7 +24,7 @@ type Props = {
   onClose: () => void;
 };
 
-export function SidePanel({ tab, setTab, mem, setMem, onErase, theme, setTheme, open, onClose }: Props) {
+export function SidePanel({ tab, setTab, mem, setMem, moodData, setMoodData, onErase, theme, setTheme, open, onClose }: Props) {
   const [actMood, setActMood] = useState("");
   const [actItems, setActItems] = useState(() => ACTIVITIES.slice(0, 4));
   const [resQ, setResQ] = useState("");
@@ -90,6 +94,8 @@ export function SidePanel({ tab, setTab, mem, setMem, onErase, theme, setTheme, 
             </div>
           </>
         )}
+
+        {tab === "mood" && <MoodPanel data={moodData} setData={setMoodData} />}
 
         {tab === "activities" && (
           <>

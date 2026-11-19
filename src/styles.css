@@ -61,6 +61,15 @@
   --alert-line: oklch(0.826 0.068 27.7);
   --danger: oklch(0.516 0.157 30.4);
   --danger-fg: oklch(1 0 0);
+  /* hard (0) -> good (6) scale for mood check-ins */
+  --scale-0: oklch(0.63 0.19 27);
+  --scale-1: oklch(0.70 0.16 45);
+  --scale-2: oklch(0.78 0.14 70);
+  --scale-3: oklch(0.86 0.15 95);
+  --scale-4: oklch(0.88 0.11 105);
+  --scale-5: oklch(0.74 0.15 130);
+  --scale-6: oklch(0.82 0.17 142);
+  --scale-fg: oklch(0.25 0.02 170);
   --r-bubble: 18px;
   --r-ctl: 12px;
   --r-card: 16px;
@@ -255,6 +264,33 @@
 .me-custom { display: flex; gap: 6px; align-items: center; font-size: 12.5px; }
 .me-app .me-custom input { width: 36px; height: 30px; padding: 0; border: 1px solid var(--line); }
 .me-mobile-only { display: none; }
+
+/* Emotional read + mood check-ins */
+.me-read { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.me-app .me-read button { background: none; color: var(--accent); padding: 0; font-size: 12.5px; text-decoration: underline; }
+.me-feelings { display: flex; flex-wrap: wrap; gap: 6px; }
+.me-app .me-feelings button { background: var(--surface-2); color: var(--fg); border: 1px solid var(--line); border-radius: 999px; font-size: 13px; padding: 5px 12px; }
+.me-app .me-feelings button:hover { border-color: var(--accent); }
+.me-scale-pick { display: flex; gap: 4px; flex-wrap: wrap; }
+.me-app .me-scale-pick button { display: inline-flex; align-items: center; gap: 5px; background: var(--surface-2); color: var(--fg); padding: 5px 9px; border-radius: 999px; font-size: 13px; min-width: 40px; justify-content: center; }
+.me-app .me-scale-pick button[aria-checked="true"] { color: var(--scale-fg); font-weight: 600; box-shadow: 0 0 0 2px var(--fg); }
+.me-app .me-scale-pick button[aria-checked="true"] .me-dot { display: none; }
+.me-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; justify-self: center; }
+.me-dot.none { background: var(--line); }
+.me-median { margin-top: 14px; }
+.me-median-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.me-median-bar { position: relative; display: flex; gap: 2px; height: 5px; margin: 22px 0 6px; }
+.me-median-bar > span:not(.me-median-pin) { flex: 1; border-radius: 3px; }
+.me-median-pin {
+  position: absolute; bottom: -2px; transform: translate(-50%, 0); width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 12px; font-weight: 700; color: var(--scale-fg); border: 2px solid var(--surface); margin-bottom: 6px;
+}
+.me-app button.me-yearnav { padding: 2px 12px; }
+.me-year { display: grid; grid-template-columns: 22px repeat(12, 1fr); row-gap: 4px; margin-top: 6px; font-size: 10.5px; }
+.me-year-row { display: contents; }
+.me-year-h { color: var(--muted); text-align: center; align-self: center; }
+.me-legend { display: flex; margin: 10px 0 4px; border-radius: 999px; overflow: hidden; }
+.me-legend span { flex: 1; text-align: center; font-size: 12px; font-weight: 600; color: var(--scale-fg); padding: 2px 0; }
 
 @media (prefers-reduced-motion: reduce) {
   .me-app *, .me-app *::before, .me-app *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }

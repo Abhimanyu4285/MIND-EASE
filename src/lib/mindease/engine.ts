@@ -75,8 +75,17 @@ export function suggest(mood: string | null, n: number, rand: () => number = Mat
 
 const pick = (a: string[] | undefined, s: number) => (a && a.length ? (a[s % a.length] ?? "") : "");
 
-export function craftReply(ctx: { intent: Intent; mood: string | null; acts: Activity[]; rag: Chunk[]; turn: number; recalled: string | null }) {
-  const { intent, mood, acts, rag, turn, recalled } = ctx;
+export function craftReply(ctx: {
+  intent: Intent;
+  mood: string | null;
+  acts: Activity[];
+  rag: Chunk[];
+  turn: number;
+  recalled: string | null;
+  /** When the emotional read is unsure, ask this instead of assuming a feeling. */
+  ask?: string | null;
+}) {
+  const { intent, mood, acts, rag, turn, recalled, ask } = ctx;
   if (intent === "activity" && acts.length)
     return (
       "Happy to. Here are a couple of things we could try, only if they feel right:\n" +
@@ -89,6 +98,7 @@ export function craftReply(ctx: { intent: Intent; mood: string | null; acts: Act
     if (b.length > 420) b = b.slice(0, 420).replace(/\s+\S*$/, "") + "...";
     return `Here is something that might help, from *${top.title}*:\n\n${b}\n\nDoes that fit your situation, or should we look at it differently?`;
   }
+  if (ask) return pick(REFLECT["none"], turn) + " " + ask;
   const m = mood || "none";
   let r = pick(REFLECT[m], turn);
   if (recalled) r += ` Earlier you mentioned: ${recalled.toLowerCase()}. Is that still part of this?`;
@@ -96,10 +106,11 @@ export function craftReply(ctx: { intent: Intent; mood: string | null; acts: Act
   return r;
 }
 
-export function contextFor(mood: string | null, rag: Chunk[], acts: Activity[], mems: string[], level: Level) {
+export function contextFor(mood: string | null, rag: Chunk[], acts: Activity[], mems: string[], level: Level, emotionNote?: string) {
   const p: string[] = [];
   if (mems.length) p.push("Things the student chose to let you remember (use only if relevant, never list them): " + mems.join("; "));
-  if (mood) p.push("A keyword check guessed the mood might be: " + mood + ". It may be wrong; trust their actual words.");
+  if (emotionNote) p.push("Emotional read (tentative; text alone cannot show how someone feels): " + emotionNote);
+  else if (mood) p.push("A keyword check guessed the mood might be: " + mood + ". It may be wrong; trust their actual words.");
   if (rag.length)
     p.push(
       "The student wants practical help. Vetted material you may paraphrase warmly, in your own words and only the part that fits:\n" +
@@ -153,7 +164,7 @@ export function recall(mem: Memory, text: string): string | null {
 }
 
 /* ============ Spoken or typed commands ============ */
-export type TabKey = "memory" | "activities" | "resources" | "support" | "theme";
+export type TabKey = "memory" | "mood" | "activities" | "resources" | "support" | "theme";
 export type Command =
   | { kind: "reset" }
   | { kind: "open"; tab: TabKey | null; label: string }
@@ -167,9 +178,10 @@ export function parseCommand(t: string): Command | null {
   if (s.length > 45) return null;
   let m: RegExpMatchArray | null;
   if (/^(start a )?(new chat|start over|clear (the )?chat)$/.test(s)) return { kind: "reset" };
-  if ((m = s.match(/^(?:open|show|go to)(?: me)?(?: the)? (memory|activities|resources|support|get support|theme|tools)$/))) {
+  if ((m = s.match(/^(?:open|show|go to)(?: me)?(?: the)? (memory|mood|mood check-?in|check-?in|stats|activities|resources|support|get support|theme|tools)$/))) {
     const w = m[1] ?? "";
-    return { kind: "open", tab: w === "get support" ? "support" : w === "tools" ? null : (w as TabKey), label: w === "tools" ? "the tools" : w };
+    const tab: TabKey | null = w === "get support" ? "support" : w === "tools" ? null : /mood|check|stats/.test(w) ? "mood" : (w as TabKey);
+    return { kind: "open", tab, label: w === "tools" ? "the tools" : tab === "mood" ? "mood check-in" : w };
   }
   if ((m = s.match(/^(?:turn|switch) (on|off) (?:my )?memory$/))) return { kind: "memory", on: m[1] === "on" };
   if (/^(suggest|give me suggestions|what can help|what might help|what should i do)/.test(s) && s.length < 40) return { kind: "suggest" };

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { checkInSummary, EMPTY_MOOD, loadMood, MOOD_KEY, todayCheckIn, type MoodStore } from "@/lib/mindease/checkins";
+import { describeRead, FEELING_CHOICES, interpret, readMessage, type Reading, type SelfReport } from "@/lib/mindease/emotion";
 import { DEAD_CODES, sample, sampleJSON, type AiError } from "@/lib/mindease/ai-client";
 import { CRISIS_REPLY, PERSONA, type Activity } from "@/lib/mindease/data";
 import { makeDictation, type Dictation, type DictState } from "@/lib/mindease/dictation";
@@ -38,6 +40,8 @@ type Msg = {
   seeSomeone?: string | undefined;
   footnote?: string | undefined;
   notice?: string | undefined;
+  read?: string | undefined;
+  ask?: boolean | undefined;
 };
 type Turn = { role: "user" | "assistant"; content: string };
 
@@ -65,6 +69,8 @@ export function MindEaseApp() {
   const [tab, setTab] = useState<TabKey>("memory");
   const [asideOpen, setAsideOpen] = useState(false);
   const [mem, setMemState] = useState<Memory>({ consent: false, notes: [] });
+  const [moodData, setMoodDataState] = useState<MoodStore>(EMPTY_MOOD);
+  const [correcting, setCorrecting] = useState<number | null>(null);
   const [theme, setThemeState] = useState<Theme>(DEF_T);
   const [loaded, setLoaded] = useState(false);
   const [cloudEnabled, setCloudEnabled] = useState(false);
@@ -83,6 +89,10 @@ export function MindEaseApp() {
   const busyRef = useRef(false);
   const memRef = useRef(mem);
   memRef.current = mem;
+  const moodRef = useRef(moodData);
+  moodRef.current = moodData;
+  const readingsRef = useRef<Reading[]>([]);
+  const selfReportRef = useRef<SelfReport | null>(null);
   const stateRef = useRef({ cloudEnabled, aiOK, ttsOn, autosend, input });
   stateRef.current = { cloudEnabled, aiOK, ttsOn, autosend, input };
   const baseRef = useRef("");
@@ -92,6 +102,7 @@ export function MindEaseApp() {
     try {
       const s = localStorage.getItem(MEM_KEY);
       if (s) setMemState(JSON.parse(s));
+      setMoodDataState(loadMood(localStorage.getItem(MOOD_KEY)));
     } catch {
       /* ignore */
     }
@@ -118,6 +129,15 @@ export function MindEaseApp() {
 
   useEffect(() => {
     if (!loaded) return;
+    try {
+      localStorage.setItem(MOOD_KEY, JSON.stringify(moodData));
+    } catch {
+      /* ignore */
+    }
+  }, [moodData, loaded]);
+
+  useEffect(() => {
+    if (!loaded) return;
     saveTheme(theme);
     applyTheme(theme);
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -132,6 +152,7 @@ export function MindEaseApp() {
   }, [messages]);
 
   const setMem = useCallback((fn: (m: Memory) => Memory) => setMemState((m) => fn(m)), []);
+  const setMoodData = useCallback((fn: (d: MoodStore) => MoodStore) => setMoodDataState((d) => fn(d)), []);
 
   /* ---------- message helpers ---------- */
   const addMsg = (m: Omit<Msg, "id">) => {
@@ -178,6 +199,9 @@ export function MindEaseApp() {
     if (!force && turnsRef.current.length && !window.confirm("Start a new chat? This clears the current conversation from this page.")) return;
     turnRef.current = 0;
     turnsRef.current = [];
+    readingsRef.current = [];
+    selfReportRef.current = null;
+    setCorrecting(null);
     setShowStarter(true);
     setMessages([greeting()]);
   }
@@ -264,6 +288,7 @@ export function MindEaseApp() {
 
     busyRef.current = true;
     setBusy(true);
+    setCorrecting(null);
     let id = -1;
     try {
       try {
@@ -280,12 +305,28 @@ export function MindEaseApp() {
       let notice: string | undefined;
       let viaAI = false;
 
+      /* Emotional read: tone, wording, change over time and the student's own check-in. */
+      const reading = readMessage(text);
+      const emo = interpret({
+        text,
+        reading,
+        history: readingsRef.current,
+        selfReport: selfReportRef.current,
+        turn: turnRef.current,
+        checkIn: todayCheckIn(moodRef.current.entries),
+      });
+      readingsRef.current = [...readingsRef.current, reading].slice(-20);
+      const stated = reading.candidates[0];
+      if (reading.explicit && stated) selfReportRef.current = { label: stated.label, turn: turnRef.current };
+      let read: string | undefined;
+      let ask = false;
+
       if (level === "crisis") {
         reply = CRISIS_REPLY;
         helpline = "Support is available right now";
         await typeOut(id, reply);
       } else {
-        const mood = detectMood(text);
+        const mood = emo.label ?? emo.possible ?? detectMood(text);
         const intent0 = route(text);
         const rag = intent0 === "resource" ? retrieve(text) : [];
         const intent = intent0 === "resource" && !rag.length ? "talk" : intent0;
@@ -298,7 +339,7 @@ export function MindEaseApp() {
             { role: "user", content: PERSONA },
             { role: "assistant", content: "Understood. I will follow these guidelines." },
             ...turnsRef.current.slice(-12),
-            { role: "user", content: text + contextFor(mood, rag, acts, mems, level) },
+            { role: "user", content: text + contextFor(emo.label, rag, acts, mems, level, emo.note) },
           ];
           try {
             const r = await sample(history, { modelTier: "quick", onText: ({ text: t }) => patchMsg(id, { html: md(t) + '<span class="me-cursor"></span>' }) });
@@ -313,16 +354,26 @@ export function MindEaseApp() {
           }
         }
         if (!viaAI) {
-          reply = craftReply({ intent, mood, acts, rag, turn: turnRef.current, recalled: recall(memRef.current, text) });
+          reply = craftReply({
+            intent,
+            mood: emo.label,
+            acts,
+            rag,
+            turn: turnRef.current,
+            recalled: recall(memRef.current, text),
+            ask: intent === "talk" && level === "none" ? emo.askLine : null,
+          });
           if (level === "elevated")
             reply += "\n\n_If this heaviness keeps building, talking to a counsellor or someone you trust can really help. Tele-MANAS (14416) is free and open 24/7._";
           await typeOut(id, reply);
         }
         if (level === "elevated") helpline = "Support is available if you want it";
+        if (moodRef.current.showRead) read = describeRead(emo) ?? undefined;
+        ask = emo.shouldAsk && intent === "talk";
       }
       turnsRef.current.push({ role: "user", content: text }, { role: "assistant", content: reply });
       turnRef.current++;
-      patchMsg(id, { html: md(reply), text: reply, streaming: false, acts, sources, helpline, notice });
+      patchMsg(id, { html: md(reply), text: reply, streaming: false, acts, sources, helpline, notice, read, ask });
       speak(reply);
       if (level !== "crisis") void rememberSmart(text);
     } catch (err) {
@@ -356,6 +407,7 @@ export function MindEaseApp() {
     setBusy(true);
     const id = addMsg({ role: "assistant", html: THINKING("Thinking about what you have shared"), text: "", streaming: true });
     const mems = memRef.current.consent ? memRef.current.notes.slice(0, 6).map((n) => n.text) : [];
+    const checkIn = todayCheckIn(moodRef.current.entries);
     type SuggestData = { intro?: string; suggestions: Suggestion[]; seeSomeone?: string | null };
     let data = null as SuggestData | null;
     let notice: string | undefined;
@@ -370,7 +422,7 @@ export function MindEaseApp() {
 
 Conversation so far:
 ${convo}
-${mems.length ? "\nThings they chose to let you remember: " + mems.join("; ") + "\n" : ""}
+${mems.length ? "\nThings they chose to let you remember: " + mems.join("; ") + "\n" : ""}${checkIn ? "\nTheir own mood check-in today: " + checkInSummary(checkIn) + ". Trust this over guesses from their wording.\n" : ""}
 Rules:
 - Give exactly 3 suggestions. Each must clearly connect to something they actually said, not generic wellness advice.
 - Mix the kinds: one thing to do right now to settle (kind "right now"), one that addresses the underlying situation (kind "for the cause"), and one involving a person, place or routine if it fits (kind "support" or "routine").
@@ -477,6 +529,17 @@ Reply with only JSON in this shape:
     void send(v);
   };
 
+  const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant" && !m.streaming)?.id;
+  function chooseFeeling(f: string) {
+    setCorrecting(null);
+    if (f === "something else") {
+      setInput("I'm feeling ");
+      inputRef.current?.focus();
+      return;
+    }
+    void send(`I'm feeling ${f}`);
+  }
+
   const modeText = cloudEnabled && aiOK ? "cloud AI enabled" : "private local companion";
 
   return (
@@ -531,6 +594,25 @@ Reply with only JSON in this shape:
                 {m.sources?.length ? <div className="muted small">Drawn from: {m.sources.join(", ")}</div> : null}
                 {m.helpline ? <Helplines title={m.helpline} /> : null}
                 {m.notice ? <div className="me-notice">{m.notice}</div> : null}
+                {m.read ? (
+                  <div className="me-read muted small">
+                    <span>My read: {m.read}</span>
+                    {m.id === lastAssistant && !m.ask && !busy ? (
+                      <button type="button" onClick={() => setCorrecting(correcting === m.id ? null : m.id)}>
+                        {correcting === m.id ? "Never mind" : "Not quite?"}
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+                {m.id === lastAssistant && !busy && (m.ask || correcting === m.id) ? (
+                  <div className="me-feelings" aria-label="How are you feeling?">
+                    {[...FEELING_CHOICES, "something else"].map((f) => (
+                      <button key={f} type="button" onClick={() => chooseFeeling(f)}>
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>
@@ -546,6 +628,9 @@ Reply with only JSON in this shape:
           <div className="me-helprow">
             <button type="button" className="ghost" onClick={() => void suggestHelp()} disabled={busy}>
               Suggest what might help
+            </button>
+            <button type="button" className="ghost" onClick={() => (setTab("mood"), setAsideOpen(true))}>
+              Mood check-in
             </button>
             <span className="muted small">Ideas based on what you have told me</span>
           </div>
@@ -601,8 +686,11 @@ Reply with only JSON in this shape:
           setTab={setTab}
           mem={mem}
           setMem={setMem}
+          moodData={moodData}
+          setMoodData={setMoodData}
           onErase={() => {
             setMemState({ consent: false, notes: [] });
+            setMoodDataState({ ...EMPTY_MOOD });
             resetChat(true);
           }}
           theme={theme}
